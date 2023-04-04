@@ -3,7 +3,7 @@ from flask import Flask, url_for, request, render_template, redirect
 app = Flask(__name__)
 
 
-@app.route('/company_page')
+@app.route('/company_page', methods=['POST', 'GET'])
 @app.route('/')
 def company_page():
     params = {
@@ -11,6 +11,39 @@ def company_page():
         'building_page': False,
         'specialization_page': False,
         'person_page': False
+    }
+    return render_template('base.html', **params)
+
+
+@app.route('/building_page', methods=['POST', 'GET'])
+def building_page():
+    params = {
+        'company_page': False,
+        'building_page': True,
+        'specialization_page': False,
+        'person_page': False
+    }
+    return render_template('base.html', **params)
+
+
+@app.route('/specialization_page', methods=['POST', 'GET'])
+def specialization_page():
+    params = {
+        'company_page': False,
+        'building_page': False,
+        'specialization_page': True,
+        'person_page': False
+    }
+    return render_template('base.html', **params)
+
+
+@app.route('/person_page', methods=['POST', 'GET'])
+def person_page():
+    params = {
+        'company_page': False,
+        'building_page': False,
+        'specialization_page': False,
+        'person_page': True
     }
     return render_template('base.html', **params)
 

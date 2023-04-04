@@ -1,0 +1,14 @@
+.nav {
+	background-color: #4E4CE5;
+	padding: 20px;
+}
+
+.nav-link.active {
+	color: black !important;
+}
+
+.nav-link {
+	background-color: #E6CB4C !important;
+	margin-left: 10px;
+	margin-right: 10px;
+}
