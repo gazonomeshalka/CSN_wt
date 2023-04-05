@@ -1,4 +1,5 @@
 from flask import Flask, url_for, request, render_template, redirect
+from data import db_session
 
 app = Flask(__name__)
 
@@ -49,6 +50,7 @@ def person_page():
 
 
 def main():
+    db_session.global_init("db/global.db")
     host, port = '127.0.0.1', 5000
     print(f'{host}:{port}')
     app.run(host=host, port=port)
