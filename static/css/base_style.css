@@ -1,3 +1,9 @@
+#CSN_title {
+	color: white;
+	font-size: x-large;
+	margin-right: 10px;
+}
+
 .nav {
 	background-color: #4E4CE5;
 	padding: 20px;
@@ -11,4 +17,13 @@
 	background-color: #E6CB4C !important;
 	margin-left: 10px;
 	margin-right: 10px;
+}
+
+#enter_account_warning_text {
+	text-align: center;
+}
+
+#enter_account_warning {
+	text-align: center;
+	padding-top: 40%;
 }
