@@ -26,6 +26,13 @@
 </header>
 <!-- Begin page content -->
 <main role="main" class="container">
+	{% if not current_user.is_authenticated and title != "Регистрация" and title != "Авторизация" %}
+		<p id="log_btns">
+			<a class="btn btn-primary log_btn" href="/register">Зарегистрироваться</a>
+			<a class="btn btn-success log_btn" href="/login">Войти</a>
+		</p>
+	{% else %}
+	{% endif %}
     {% block content %}{% endblock %}
 </main>
 </body>
