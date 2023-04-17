@@ -37,3 +37,17 @@
     margin-right: -50%;
     transform: translate(-50%, -50%)
 }
+
+#dropdownMenuLink {
+	margin-left: 5px;
+}
+
+main {
+	margin-left: 2px !important;
+	margin-right: 2px !important;
+}
+
+#cr-bar {
+	padding-top: 2px;
+	padding-bottom: 2px;
+}

@@ -1,1 +1,1 @@
-from . import users, stores, announces, companies, specializations, loginforms
+from . import users, stores, announces, companies, loginforms
