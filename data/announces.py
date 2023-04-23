@@ -11,11 +11,12 @@ class Announce(SqlAlchemyBase):
     title = sqlalchemy.Column(sqlalchemy.String)
     description = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     importance = sqlalchemy.Column(sqlalchemy.Integer)
-    picture_name = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     company_id = sqlalchemy.Column(sqlalchemy.Integer,
                                    sqlalchemy.ForeignKey("companies.id"), nullable=True)
     store_id = sqlalchemy.Column(sqlalchemy.Integer,
                                  sqlalchemy.ForeignKey("stores.id"), nullable=True)
     specialization = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-    user_id = sqlalchemy.Column(sqlalchemy.Integer,
-                                sqlalchemy.ForeignKey("users.id"), nullable=True)
+    sender_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                  sqlalchemy.ForeignKey("users.id"), nullable=True)
+    receiver_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                    sqlalchemy.ForeignKey("users.id"), nullable=True)

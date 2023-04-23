@@ -6,7 +6,10 @@ from data.announces import Announce
 from data.companies import Company
 from data.stores import Store
 from data.loginforms import LoginForm, RegisterForm, RegisterCompanyForm, RegisterStoreForm, ManageStoreDirectorForm
+from data.loginforms import ManageStoreBossForm, CreateAnnounceForm
 from data.passwords_func import create_key, check_password
+import datetime
+from data.planed_delete_of_announce import set_time_for_announce
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tekmb1$)o@4)mg#-1fa@ubhxp%2v+bzlwn)yh53vyo68-x@a1&'
@@ -217,6 +220,109 @@ def manage_store_director():
         db_sess.commit()
         return redirect('/')
     return render_template('manage_store_director.html', **params, form=form)
+
+
+@app.route('/manage_store_boss', methods=['GET', 'POST'])
+def manage_store_boss():
+    params = {
+        'company_page': False,
+        'building_page': False,
+        'specialization_page': False,
+        'person_page': False,
+        'title': 'Управление точками'
+    }
+    form = ManageStoreBossForm()
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        w_e = form.worker_email.data
+        w_s = form.worker_specialization.data
+        if db_sess.query(User).filter(User.email == w_e).first() is None:
+            return render_template('manage_store_boss.html', **params,
+                                   form=form,
+                                   message="Пользователя с такой почтой ещё не существует")
+        worker = db_sess.query(User).filter(User.email == w_e).first()
+        if worker.specialization is not None:
+            return render_template('manage_store_boss.html', **params,
+                                   form=form,
+                                   message="Пользователь уже является чьим-то сотрудником.")
+        boss = db_sess.query(User).filter(User.id == session['user_id']).first()
+        worker.company_id, worker.store_id = boss.company_id, boss.store_id
+        worker.specialization = w_s
+        db_sess.commit()
+        return redirect('/')
+    return render_template('manage_store_boss.html', **params, form=form)
+
+
+@app.route('/manage_store', methods=['GET', 'POST'])
+def manage_store():
+    db_sess = db_session.create_session()
+    if db_sess.query(User).filter(User.id == session['user_id']).first().specialization == 'director':
+        return redirect('/manage_store_director')
+    elif db_sess.query(User).filter(User.id == session['user_id']).first().specialization == 'boss':
+        return redirect('/manage_store_boss')
+    else:
+        return redirect('/')
+
+
+@app.route('/create_announce', methods=['GET', 'POST'])
+def create_announce():
+    params = {
+        'company_page': False,
+        'building_page': False,
+        'specialization_page': False,
+        'person_page': False,
+        'title': 'Создание объявления'
+    }
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.id == session['user_id']).first()
+    form = CreateAnnounceForm()
+    if user.specialization == 'director':
+        choices = [('по фирме', 'по фирме')]
+    elif user.specialization == 'boss':
+        choices = [('по точке', 'по точке'), ('специализированные', 'специализированные'),
+                   ('определённому лицу', 'определённому лицу')]
+        form.specialization.choices = [(x.specialization, x.specialization) for x in
+                                       db_sess.query(User).filter(User.company_id == user.company_id,
+                                                                  User.store_id == user.store_id).all()]
+    else:
+        choices = [('специализированные', 'специализированные'), ('определённому лицу', 'определённому лицу')]
+        form.specialization.choices = [(x.specialization, x.specialization) for x in
+                                       db_sess.query(User).filter(User.company_id == user.company_id,
+                                                                  User.store_id == user.store_id).all()]
+    form.coverage.choices = choices
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        announce = Announce()
+        announce.title = form.title.data
+        announce.description = form.description.data
+        announce.importance = form.importance.data
+        announce.sender_id = session['user_id']
+        if form.coverage.data == 'по фирме':
+            announce.company_id = user.company_id
+        elif form.coverage.data == 'по точке':
+            announce.store_id = user.store_id
+        elif form.coverage.data == 'специализированные':
+            announce.store_id = user.store_id
+            announce.specialization = form.specialization.data
+        elif form.coverage.data == 'определённому лицу':
+            id = db_sess.query(User).filter(User.email == form.email.data).first().id
+            announce.receiver_id = id
+        try:
+            time = datetime.datetime.strptime(form.del_time.data, '%Y-%m-%d %H:%M')
+            now = datetime.datetime.now() + datetime.timedelta(minutes=1)
+            if time <= now:
+                return render_template('create_announce.html', **params,
+                                       form=form,
+                                       message="Время должно отличаться хотя-бы на минуту")
+        except BaseException:
+            return render_template('create_announce.html', **params,
+                                   form=form,
+                                   message="Неправильно введён формат времени")
+        set_time_for_announce(announce.id, time)
+        db_sess.add(announce)
+        db_sess.commit()
+        return redirect('/')
+    return render_template('create_announce.html', **params, form=form)
 
 
 @app.route('/logout')

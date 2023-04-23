@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Назначить работника</h1>
+    <form action="" method="post"  novalidate>
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.worker_email.label }}<br>
+            {{ form.worker_email(size=32) }}<br>
+            {% for error in form.worker_email.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.worker_specialization.label }}<br>
+            {{ form.worker_specialization(size=32) }}<br>
+            {% for error in form.worker_specialization.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>{{ form.submit() }}</p>
+		{{message}}
+    </form>
+ {% endblock %}
