@@ -16,7 +16,6 @@ class Announce(SqlAlchemyBase):
                                    sqlalchemy.ForeignKey("companies.id"), nullable=True)
     store_id = sqlalchemy.Column(sqlalchemy.Integer,
                                  sqlalchemy.ForeignKey("stores.id"), nullable=True)
-    specialization_id = sqlalchemy.Column(sqlalchemy.Integer,
-                                          sqlalchemy.ForeignKey("specializations.id"), nullable=True)
+    specialization = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     user_id = sqlalchemy.Column(sqlalchemy.Integer,
                                 sqlalchemy.ForeignKey("users.id"), nullable=True)

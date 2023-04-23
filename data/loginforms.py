@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import EmailField, PasswordField, BooleanField, SubmitField, StringField
+from wtforms import EmailField, PasswordField, BooleanField, SubmitField, StringField, SelectField
 from wtforms.validators import DataRequired
 
 
@@ -27,3 +27,15 @@ class RegisterCompanyForm(FlaskForm):
 class RegisterStoreForm(FlaskForm):
     address = StringField('Адрес', validators=[DataRequired()])
     submit = SubmitField('Зарегистрировать')
+
+
+class ManageStoreDirectorForm(FlaskForm):
+    boss_email = StringField('Почта босса', validators=[DataRequired()])
+    address = SelectField('Адрес точки', validators=[DataRequired()])
+    submit = SubmitField('Назначить')
+
+
+class ManageStoreBossForm(FlaskForm):
+    worker_email = StringField('Почта работника', validators=[DataRequired()])
+    worker_specialization = StringField('Специальность работника', validators=[DataRequired()])
+    submit = SubmitField('Назначить')
