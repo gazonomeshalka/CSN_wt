@@ -10,7 +10,6 @@ from data.loginforms import ManageStoreBossForm, CreateAnnounceForm
 from data.passwords_func import create_key, check_password
 import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
-from sqlalchemy import delete
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
