@@ -9,12 +9,45 @@ from data.loginforms import LoginForm, RegisterForm, RegisterCompanyForm, Regist
 from data.loginforms import ManageStoreBossForm, CreateAnnounceForm
 from data.passwords_func import create_key, check_password
 import datetime
-from data.planed_delete_of_announce import set_time_for_announce
+from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import delete
+import sqlite3
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tekmb1$)o@4)mg#-1fa@ubhxp%2v+bzlwn)yh53vyo68-x@a1&'
+app.config['UPLOAD_FOLDER'] = 'uploaded_files'
 login_manager = LoginManager()
 login_manager.init_app(app)
+scheduler = BackgroundScheduler()
+scheduler.start()
+
+
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+
+
+def set_time_for_announce(id, time):
+    global scheduler
+    job = scheduler.add_job(func=del_announce, next_run_time=time, args=(id, ), id=str(id))
+    print(id, time)
+    return
+
+
+def del_announce(id):
+    db_sess = db_session.create_session()
+    id = int(id)
+    if db_sess.query(Announce).filter(Announce.id == id).first().file is not None:
+        files = os.listdir(app.config['UPLOAD_FOLDER'])
+        os.remove(os.path.join('static', app.config['UPLOAD_FOLDER'],
+                               *[x for x in files if x[:x.rfind('.')] == str(id)]))
+    conn = sqlite3.connect('db/global.db')
+    c = conn.cursor()
+    c.execute('''DELETE FROM announces WHERE id=?''', (id,))
+    conn.commit()
+    return
 
 
 @login_manager.user_loader
@@ -33,6 +66,13 @@ def company_page():
         'person_page': False,
         'title': 'CSN'
     }
+    db_sess = db_session.create_session()
+    if session.get('user_id', False):
+        cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+        if cur_user is not None:
+            if cur_user.specialization:
+                announces = db_sess.query(Announce).filter(Announce.company_id == cur_user.company_id)
+                params['announces'] = announces
     return render_template('base.html', **params)
 
 
@@ -45,6 +85,15 @@ def building_page():
         'person_page': False,
         'title': 'CSN'
     }
+    db_sess = db_session.create_session()
+    if session.get('user_id', False):
+        cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+        if cur_user is not None:
+            if cur_user.specialization:
+                cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+                announces = db_sess.query(Announce).filter(Announce.store_id == cur_user.store_id,
+                                                           Announce.specialization == None)
+                params['announces'] = announces
     return render_template('base.html', **params)
 
 
@@ -57,6 +106,15 @@ def specialization_page():
         'person_page': False,
         'title': 'CSN'
     }
+    db_sess = db_session.create_session()
+    if session.get('user_id', False):
+        cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+        if cur_user is not None:
+            if cur_user.specialization:
+                cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+                announces = db_sess.query(Announce).filter(Announce.store_id == cur_user.store_id,
+                                                           Announce.specialization == cur_user.specialization)
+                params['announces'] = announces
     return render_template('base.html', **params)
 
 
@@ -69,6 +127,14 @@ def person_page():
         'person_page': True,
         'title': 'CSN'
     }
+    db_sess = db_session.create_session()
+    if session.get('user_id', False):
+        cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+        if cur_user is not None:
+            if cur_user.specialization:
+                cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+                announces = db_sess.query(Announce).filter(Announce.receiver_id == cur_user.id)
+                params['announces'] = announces
     return render_template('base.html', **params)
 
 
@@ -93,7 +159,8 @@ def register():
         )
         db_sess.add(user)
         db_sess.commit()
-        login_user(user, remember=form.remember_me.data)
+        logout_user()
+        login_user(user, remember=True)
         session['user_id'] = user.id
         return redirect('/')
     return render_template('register.html', title=title, form=form)
@@ -107,7 +174,8 @@ def login():
         db_sess = db_session.create_session()
         user = db_sess.query(User).filter(User.email == form.email.data).first()
         if user and check_password(form.password.data, user.key_pass):
-            login_user(user, remember=form.remember_me.data)
+            logout_user()
+            login_user(user, remember=True)
             session['user_id'] = user.id
             return redirect("/")
         return render_template('login.html',
@@ -278,6 +346,7 @@ def create_announce():
     form = CreateAnnounceForm()
     if user.specialization == 'director':
         choices = [('по фирме', 'по фирме')]
+        form.specialization.choices = [('всем', 'всем')]
     elif user.specialization == 'boss':
         choices = [('по точке', 'по точке'), ('специализированные', 'специализированные'),
                    ('определённому лицу', 'определённому лицу')]
@@ -296,7 +365,7 @@ def create_announce():
         announce.title = form.title.data
         announce.description = form.description.data
         announce.importance = form.importance.data
-        announce.sender_id = session['user_id']
+        announce.sender = user.SNO
         if form.coverage.data == 'по фирме':
             announce.company_id = user.company_id
         elif form.coverage.data == 'по точке':
@@ -309,7 +378,7 @@ def create_announce():
             announce.receiver_id = id
         try:
             time = datetime.datetime.strptime(form.del_time.data, '%Y-%m-%d %H:%M')
-            now = datetime.datetime.now() + datetime.timedelta(minutes=1)
+            now = datetime.datetime.now()
             if time <= now:
                 return render_template('create_announce.html', **params,
                                        form=form,
@@ -318,8 +387,18 @@ def create_announce():
             return render_template('create_announce.html', **params,
                                    form=form,
                                    message="Неправильно введён формат времени")
-        set_time_for_announce(announce.id, time)
+        announce.del_time = str(time)
         db_sess.add(announce)
+        db_sess.commit()
+        if form.file.data.filename != '':
+            file = form.file.data
+            filename = secure_filename(file.filename)
+            rasshirenie = filename.rfind('.')
+            filename = str(announce.id) + filename[rasshirenie:]
+            file_path = os.path.join('static', app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            announce.file = filename
+        set_time_for_announce(announce.id, time)
         db_sess.commit()
         return redirect('/')
     return render_template('create_announce.html', **params, form=form)

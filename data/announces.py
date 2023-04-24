@@ -16,7 +16,9 @@ class Announce(SqlAlchemyBase):
     store_id = sqlalchemy.Column(sqlalchemy.Integer,
                                  sqlalchemy.ForeignKey("stores.id"), nullable=True)
     specialization = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-    sender_id = sqlalchemy.Column(sqlalchemy.Integer,
+    sender = sqlalchemy.Column(sqlalchemy.Integer,
                                   sqlalchemy.ForeignKey("users.id"), nullable=True)
     receiver_id = sqlalchemy.Column(sqlalchemy.Integer,
                                     sqlalchemy.ForeignKey("users.id"), nullable=True)
+    del_time = sqlalchemy.Column(sqlalchemy.String)
+    file = sqlalchemy.Column(sqlalchemy.Integer)

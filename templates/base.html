@@ -41,6 +41,25 @@
 				<a href="logout" class="btn btn-primary">Выйти из аккаунта</a>
 			</div>
 		{% endif %}
+		{% if title == "CSN" %}
+			{% for announce in announces %}
+				{% if announce.importance == 1 %}
+				<div class="card border-danger mb-3">
+				{% else %}
+				<div class="card border-primary mb-3">
+				{% endif %}
+				  <div class="card-body">
+					<h5 class="card-title">{{ announce.title }}</h5>
+					<h6 class="card-subtitle mb-2 text-body-secondary">Объявление от: {{ announce.sender }}</h6>
+					<h6 class="card-subtitle mb-2 text-body-secondary">Объявление удалится в: {{ announce.del_time }}</h6>
+					<p class="card-text">{{ announce.description }}</p>
+					{% if announce.file != None %}
+					<a href="{{ url_for('static', filename='uploaded_files/'+announce.file) }}" download>Скачать прикрепленный файл</a>
+					{% endif %}
+				  </div>
+				</div>
+			{% endfor %}
+		{% endif %}
 	{% endif %}
     {% block content %}{% endblock %}
 </main>

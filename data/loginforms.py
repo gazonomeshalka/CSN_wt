@@ -48,6 +48,7 @@ class CreateAnnounceForm(FlaskForm):
     description = TextAreaField('Описание объявления', validators=(Optional(), ))
     importance = SelectField('Важность объявления', validators=[DataRequired()],
                              choices=[(1, 'Важно'), (0, 'Не очень важно')])
+    file = FileField('Добавьте файл, если это требуется', validators=(Optional(), ))
     email = StringField('Почта, если объявление персонализированное', validators=(Optional(), ))
     specialization = SelectField('Специальность, если объявление специализированное', validators=(Optional(), ))
     del_time = StringField('Когда удалить объявление?', validators=[DataRequired()])
