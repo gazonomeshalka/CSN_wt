@@ -14,6 +14,7 @@ import sqlite3
 import os
 from werkzeug.utils import secure_filename
 
+# подготовка к работе
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tekmb1$)o@4)mg#-1fa@ubhxp%2v+bzlwn)yh53vyo68-x@a1&'
 app.config['UPLOAD_FOLDER'] = 'uploaded_files'
@@ -25,10 +26,12 @@ scheduler.start()
 
 @app.before_request
 def make_session_permanent():
+    """Функция устанавливает то, что сессия будет перманентна."""
     session.permanent = True
 
 
 def set_time_for_announce(id, time):
+    """Функция добавляет работу для модуля schedule, в следствии чего, объявление позже будет удалено"""
     global scheduler
     job = scheduler.add_job(func=del_announce, next_run_time=time, args=(id, ), id=str(id))
     print(id, time)
@@ -36,8 +39,10 @@ def set_time_for_announce(id, time):
 
 
 def del_announce(id):
+    """Функция удаляет объявление"""
     db_sess = db_session.create_session()
     id = int(id)
+    # удаление прикрепленного к объявлению файла, если он был
     if db_sess.query(Announce).filter(Announce.id == id).first().file is not None:
         files = os.listdir(app.config['UPLOAD_FOLDER'])
         os.remove(os.path.join('static', app.config['UPLOAD_FOLDER'],
@@ -45,19 +50,23 @@ def del_announce(id):
     conn = sqlite3.connect('db/global.db')
     c = conn.cursor()
     c.execute('''DELETE FROM announces WHERE id=?''', (id,))
+    # подтверждение действия
     conn.commit()
     return
 
 
 @login_manager.user_loader
 def load_user(user_id):
+    """Функция возвращает пользователя по его"""
     db_sess = db_session.create_session()
     return db_sess.query(User).get(user_id)
+    # А я совсем забыл про неё, когда работал над проектом ;(
 
 
 @app.route('/company_page', methods=['POST', 'GET'])
 @app.route('/')
 def company_page():
+    """Страница с объявлениями, отсортированными по фирме"""
     params = {
         'company_page': True,
         'building_page': False,
@@ -66,10 +75,12 @@ def company_page():
         'title': 'CSN'
     }
     db_sess = db_session.create_session()
+    # работает, если пользователь зарегистрирован и авторизован
     if session.get('user_id', False):
         cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
         if cur_user is not None:
             if cur_user.specialization:
+                # сортировка объявлений по фирме
                 announces = db_sess.query(Announce).filter(Announce.company_id == cur_user.company_id)
                 params['announces'] = announces
     return render_template('base.html', **params)
@@ -77,6 +88,7 @@ def company_page():
 
 @app.route('/building_page', methods=['POST', 'GET'])
 def building_page():
+    """Страница с объявлениями, отсортированными по предприятию"""
     params = {
         'company_page': False,
         'building_page': True,
@@ -85,11 +97,12 @@ def building_page():
         'title': 'CSN'
     }
     db_sess = db_session.create_session()
+    # работает, если пользователь зарегистрирован и авторизован
     if session.get('user_id', False):
         cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
         if cur_user is not None:
             if cur_user.specialization:
-                cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+                # сортировка объявлений по предприятию
                 announces = db_sess.query(Announce).filter(Announce.store_id == cur_user.store_id,
                                                            Announce.specialization == None)
                 params['announces'] = announces
@@ -106,11 +119,12 @@ def specialization_page():
         'title': 'CSN'
     }
     db_sess = db_session.create_session()
+    # работает, если пользователь зарегистрирован и авторизован
     if session.get('user_id', False):
         cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
         if cur_user is not None:
             if cur_user.specialization:
-                cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+                # сортировка объявлений по специализации пользователя и фирме
                 announces = db_sess.query(Announce).filter(Announce.store_id == cur_user.store_id,
                                                            Announce.specialization == cur_user.specialization)
                 params['announces'] = announces
@@ -127,11 +141,12 @@ def person_page():
         'title': 'CSN'
     }
     db_sess = db_session.create_session()
+    # работает, если пользователь зарегистрирован и авторизован
     if session.get('user_id', False):
         cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
         if cur_user is not None:
             if cur_user.specialization:
-                cur_user = db_sess.query(User).filter(User.id == session['user_id']).first()
+                # сортировка объявлений по айди пользователя
                 announces = db_sess.query(Announce).filter(Announce.receiver_id == cur_user.id)
                 params['announces'] = announces
     return render_template('base.html', **params)
@@ -139,18 +154,21 @@ def person_page():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """Функция для регистрации пользователя"""
     title = 'Регистрация'
     form = RegisterForm()
     if form.validate_on_submit():
-        if form.password.data != form.password_again.data:
+        if form.password.data != form.password_again.data:  # если пароли не совпадают, то это пишется
             return render_template('register.html', title=title,
                                    form=form,
                                    message="Пароли не совпадают")
         db_sess = db_session.create_session()
+        # если почта уже зарегистрирована, то об этом сообщается
         if db_sess.query(User).filter(User.email == form.email.data).first():
             return render_template('register.html', title=title,
                                    form=form,
                                    message="Такой пользователь уже есть")
+        # создание аккаунта пользователя
         user = User(
             SNO=form.SNO.data,
             email=form.email.data,
@@ -158,6 +176,7 @@ def register():
         )
         db_sess.add(user)
         db_sess.commit()
+        # авторизация в системе
         logout_user()
         login_user(user, remember=True)
         session['user_id'] = user.id
@@ -167,16 +186,20 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Функция показывает окно для авторизации и авторизует пользователя"""
     title = 'Авторизация'
     form = LoginForm()
     if form.validate_on_submit():
         db_sess = db_session.create_session()
         user = db_sess.query(User).filter(User.email == form.email.data).first()
+        # проверка пароля
         if user and check_password(form.password.data, user.key_pass):
+            # авторизация пользователя
             logout_user()
             login_user(user, remember=True)
             session['user_id'] = user.id
             return redirect("/")
+        # если пароль не подходит, страница грузится заново
         return render_template('login.html',
                                title=title,
                                message="Неправильный логин или пароль",
@@ -186,6 +209,7 @@ def login():
 
 @app.route('/create_company', methods=['GET', 'POST'])
 def create_company():
+    """Функция создаёт фирму и показывает соответствующий интерфейс"""
     params = {
         'company_page': False,
         'building_page': False,
@@ -196,9 +220,11 @@ def create_company():
     form = RegisterCompanyForm()
     if form.validate_on_submit():
         db_sess = db_session.create_session()
+        # создание фирмы
         company = Company()
         company.title = form.title.data
         company.CEO_id = session['user_id']
+        # проверка запроса на возможность выполнения
         if db_sess.query(Company).filter(Company.CEO_id == session['user_id']).first() is not None:
             return render_template('register_company.html', **params,
                                    form=form,
@@ -211,6 +237,7 @@ def create_company():
             return render_template('register_company.html', **params,
                                    form=form,
                                    message="Вы уже являетесь каким-то работником")
+        # если все подходит, то создается фирма и коммитятся изменения
         director = db_sess.query(User).filter(User.id == session['user_id']).one()
         director.specialization = 'director'
         db_sess.add(company)
@@ -224,6 +251,7 @@ def create_company():
 
 @app.route('/create_store', methods=['GET', 'POST'])
 def create_store():
+    """Функция создает предприятие (точку) и отображает соответствующий интерфейс"""
     params = {
         'company_page': False,
         'building_page': False,
@@ -234,9 +262,11 @@ def create_store():
     form = RegisterStoreForm()
     if form.validate_on_submit():
         db_sess = db_session.create_session()
+        # создание точки
         store = Store()
         store.address = form.address.data
         store.company_id = db_sess.query(Company).filter(Company.CEO_id == session['user_id']).first()
+        # проверка на валидность запроса
         if store.company_id is None:
             return render_template('register_store.html', **params,
                                    form=form,
@@ -255,6 +285,7 @@ def create_store():
 
 @app.route('/manage_store_director', methods=['GET', 'POST'])
 def manage_store_director():
+    """Функция дает возможность работы с точками для директора"""
     params = {
         'company_page': False,
         'building_page': False,
@@ -268,20 +299,23 @@ def manage_store_director():
     stores = [x.address for x in stores]
     stores = [(x, x) for x in stores]
     form = ManageStoreDirectorForm()
-    form.address.choices = stores
+    form.address.choices = stores  # программа дает выбор из уже созданных точек
     if form.validate_on_submit():
         db_sess = db_session.create_session()
         address = form.address.data
+        # проверка почты
         if db_sess.query(User).filter(User.email == form.boss_email.data).first() is None:
             return render_template('manage_store_director.html', **params,
                                    form=form,
                                    message="Пользователя с такой почтой ещё не существует")
+        # назначение начальника
         boss = db_sess.query(User).filter(User.email == form.boss_email.data).first()
         boss.specialization, boss.store_id, boss.company_id = ('boss',
                                                                db_sess.query(Store).filter(
                                                                    Store.address == address,
                                                                    Store.company_id == user.company_id).first().id,
                                                                user.company_id)
+        # изменение айди босса у магазина
         store = db_sess.query(Store).filter(Store.address == address, Store.company_id == user.company_id).first()
         store.boss_id = boss.id
         db_sess.commit()
@@ -291,6 +325,7 @@ def manage_store_director():
 
 @app.route('/manage_store_boss', methods=['GET', 'POST'])
 def manage_store_boss():
+    """Функция дает возможность работы с точками для начальника"""
     params = {
         'company_page': False,
         'building_page': False,
@@ -301,8 +336,10 @@ def manage_store_boss():
     form = ManageStoreBossForm()
     if form.validate_on_submit():
         db_sess = db_session.create_session()
+        # собираем данные о новом работнике
         w_e = form.worker_email.data
         w_s = form.worker_specialization.data
+        # проверка запроса на валидность
         if db_sess.query(User).filter(User.email == w_e).first() is None:
             return render_template('manage_store_boss.html', **params,
                                    form=form,
@@ -312,6 +349,7 @@ def manage_store_boss():
             return render_template('manage_store_boss.html', **params,
                                    form=form,
                                    message="Пользователь уже является чьим-то сотрудником.")
+        # привязка работника
         boss = db_sess.query(User).filter(User.id == session['user_id']).first()
         worker.company_id, worker.store_id = boss.company_id, boss.store_id
         worker.specialization = w_s
@@ -322,17 +360,19 @@ def manage_store_boss():
 
 @app.route('/manage_store', methods=['GET', 'POST'])
 def manage_store():
+    """Функция перенаправляет на нужную страницу, учитывая вашу должность"""
     db_sess = db_session.create_session()
     if db_sess.query(User).filter(User.id == session['user_id']).first().specialization == 'director':
         return redirect('/manage_store_director')
     elif db_sess.query(User).filter(User.id == session['user_id']).first().specialization == 'boss':
         return redirect('/manage_store_boss')
-    else:
+    else:  # если вы не являетесь боссом или директором, редактирование точек для вас закрыто
         return redirect('/')
 
 
 @app.route('/create_announce', methods=['GET', 'POST'])
 def create_announce():
+    """Функция создает объявления и показывает соответствующий интерфейс"""
     params = {
         'company_page': False,
         'building_page': False,
@@ -343,6 +383,7 @@ def create_announce():
     db_sess = db_session.create_session()
     user = db_sess.query(User).filter(User.id == session['user_id']).first()
     form = CreateAnnounceForm()
+    # подбор опций по охвату объявление в зависимости от специализации (должности)
     if user.specialization == 'director':
         choices = [('по фирме', 'по фирме')]
         form.specialization.choices = [('всем', 'всем')]
@@ -360,11 +401,13 @@ def create_announce():
     form.coverage.choices = choices
     if form.validate_on_submit():
         db_sess = db_session.create_session()
+        # создание объявления, сбор данных
         announce = Announce()
         announce.title = form.title.data
         announce.description = form.description.data
         announce.importance = form.importance.data
         announce.sender = user.SNO
+        # характеристики объявления в базе данных зависят от его охвата
         if form.coverage.data == 'по фирме':
             announce.company_id = user.company_id
         elif form.coverage.data == 'по точке':
@@ -375,7 +418,7 @@ def create_announce():
         elif form.coverage.data == 'определённому лицу':
             id = db_sess.query(User).filter(User.email == form.email.data).first().id
             announce.receiver_id = id
-        try:
+        try:  # получение времени удаления объявления
             time = datetime.datetime.strptime(form.del_time.data, '%Y-%m-%d %H:%M')
             now = datetime.datetime.now()
             if time <= now:
@@ -388,7 +431,8 @@ def create_announce():
                                    message="Неправильно введён формат времени")
         announce.del_time = str(time)
         db_sess.add(announce)
-        db_sess.commit()
+        db_sess.commit()  # запись
+        # запись прикрепленного файла, если он есть
         if form.file.data.filename != '':
             file = form.file.data
             filename = secure_filename(file.filename)
@@ -397,7 +441,7 @@ def create_announce():
             file_path = os.path.join('static', app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             announce.file = filename
-        set_time_for_announce(announce.id, time)
+        set_time_for_announce(announce.id, time)  # установка времени удаления объявления
         db_sess.commit()
         return redirect('/')
     return render_template('create_announce.html', **params, form=form)
@@ -406,11 +450,13 @@ def create_announce():
 @app.route('/logout')
 @login_required
 def logout():
+    """Функция разлогинивает пользователя"""
     logout_user()
     return redirect("/")
 
 
 def main():
+    """Основания функция"""
     db_session.global_init("db/global.db")
     host, port = '127.0.0.1', 5000
     app.run(host=host, port=port)
